@@ -1,0 +1,20 @@
+# Optional PostgreSQL version of the stack (not needed for normal use).
+#   cd docker
+#   docker compose up -d --build
+#   docker compose run --rm api python -m etl.pipeline --synthetic
+#   docker compose run --rm api python -m ml.run_forecasts
+# Then open http://localhost:8000
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_USER: mandi, POSTGRES_PASSWORD: mandi, POSTGRES_DB: krishimandi }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  api:
+    build: { context: .., dockerfile: docker/Dockerfile }
+    environment:
+      DATABASE_URL: postgresql+psycopg2://mandi:mandi@db:5432/krishimandi
+    depends_on: [db]
+    ports: ["8000:8000"]
+volumes:
+  pgdata:

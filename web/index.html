@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Krishi-Mandi: where to sell, and when</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { ink: "#14313B", paper: "#F2F5F7", gold: "#E0A100", leaf: "#2E7D4F", chili: "#C8402B" },
+    fontFamily: { display: ["Bricolage Grotesque", "sans-serif"], body: ["Source Sans 3", "sans-serif"] } } } };
+</script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+<style>
+  button:focus-visible, input:focus-visible { outline: 3px solid #E0A100; outline-offset: 2px; }
+  input[type=range] { accent-color: #E0A100; width: 100%; }
+  .leaflet-container { font-family: inherit; }
+</style>
+</head>
+<body class="bg-paper text-ink font-body">
+<div id="root"></div>
+<script>
+const { useState, useEffect, useRef } = React;
+const html = htm.bind(React.createElement);
+
+const api = async (path, q = {}) => {
+  const r = await fetch(`/api/${path}?` + new URLSearchParams(q));
+  if (!r.ok) { let d; try { d = (await r.json()).detail; } catch (e) {} throw new Error(d || r.statusText); }
+  return r.json();
+};
+const rs = (n) => "Rs " + Math.round(n).toLocaleString("en-IN");
+const sgn = (v) => (v > 0 ? "+" : "") + Number(v).toFixed(1) + "%";
+const day = (s) => new Date(s + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+/* ---------- Map ---------- */
+function MapView({ markets, selected, onSelect, farm, onFarm }) {
+  const el = useRef(), map = useRef(), layer = useRef(), farmMk = useRef(), cb = useRef({});
+  cb.current = { onSelect, onFarm };
+
+  useEffect(() => {
+    map.current = L.map(el.current, { scrollWheelZoom: false }).setView([22.5, 79], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { attribution: "&copy; OpenStreetMap contributors", maxZoom: 10 }).addTo(map.current);
+    layer.current = L.layerGroup().addTo(map.current);
+    map.current.on("click", (e) => cb.current.onFarm(e.latlng.lat, e.latlng.lng));
+    return () => map.current.remove();
+  }, []);
+
+  useEffect(() => {
+    layer.current.clearLayers();
+    if (!markets.length) return;
+    const ps = markets.map((m) => m.price), lo = Math.min(...ps), hi = Math.max(...ps);
+    markets.forEach((m) => {
+      const t = (m.price - lo) / (hi - lo || 1), sel = m.market_id === selected;
+      L.circleMarker([m.lat, m.lon], {
+        radius: sel ? 16 : 9 + 8 * t, color: sel ? "#14313B" : "#fff", weight: sel ? 3 : 2,
+        fillColor: `hsl(${Math.round(t * 130)},62%,42%)`, fillOpacity: 0.92,
+      })
+        .bindTooltip(`${m.market}: ${rs(m.price)}/qtl (${sgn(m.change_7d)} in 7 days)`)
+        .on("click", (ev) => { L.DomEvent.stopPropagation(ev); cb.current.onSelect(m.market_id); })
+        .addTo(layer.current);
+    });
+  }, [markets, selected]);
+
+  useEffect(() => {
+    if (farmMk.current) farmMk.current.remove();
+    farmMk.current = L.circleMarker([farm.lat, farm.lon], { radius: 7, color: "#14313B", weight: 2, fillColor: "#E0A100", fillOpacity: 1 })
+      .bindTooltip("Your farm").addTo(map.current);
+  }, [farm]);
+
+  return html`<div ref=${el} style=${{ height: 440 }} className="rounded-xl border border-ink/15" role="application" aria-label="Map of mandi prices"></div>`;
+}
+
+/* ---------- Chart ---------- */
+function PriceChart({ hist, fc }) {
+  const el = useRef();
+  useEffect(() => {
+    const x = hist.map((h) => h.arrival_date);
+    const fx = fc ? fc.points.map((p) => p.target_date) : [];
+    const traces = [
+      { x, y: hist.map((h) => h.modal_price), name: "Modal price", mode: "lines", line: { color: "#14313B", width: 1.4 } },
+      { x, y: hist.map((h) => h.ma7), name: "7-day average", mode: "lines", line: { color: "#E0A100", width: 2 } },
+      { x, y: hist.map((h) => h.ma30), name: "30-day average", mode: "lines", line: { color: "#2E7D4F", width: 2, dash: "dot" } },
+    ];
+    if (fc) {
+      traces.push(
+        { x: [...fx, ...fx.slice().reverse()], y: [...fc.points.map((p) => p.upper), ...fc.points.map((p) => p.lower).reverse()],
+          fill: "toself", fillcolor: "rgba(200,64,43,.15)", line: { width: 0 }, name: "80% range", hoverinfo: "skip" },
+        { x: fx, y: fc.points.map((p) => p.yhat), name: "15-day forecast", mode: "lines", line: { color: "#C8402B", width: 2.6 } });
+    }
+    Plotly.react(el.current, traces, {
+      margin: { t: 8, r: 8, b: 40, l: 56 }, yaxis: { title: "Rs per quintal", gridcolor: "#E3EAEC" },
+      xaxis: { gridcolor: "#fff" }, legend: { orientation: "h", y: -0.18 },
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { family: "Source Sans 3, sans-serif", color: "#14313B" },
+    }, { displayModeBar: false, responsive: true });
+  }, [hist, fc]);
+  return html`<div ref=${el} style=${{ width: "100%", height: 400 }}></div>`;
+}
+
+/* ---------- Small pieces ---------- */
+const Card = ({ children, className = "" }) => html`<section className=${"rounded-xl border border-ink/15 bg-white p-4 " + className}>${children}</section>`;
+const Tile = ({ label, value, tone }) => html`
+  <div className="rounded-lg border border-ink/15 px-3 py-2">
+    <div className="text-xs text-ink/60">${label}</div>
+    <div className=${"font-display text-xl font-bold " + (tone || "")}>${value}</div>
+  </div>`;
+
+/* ---------- App ---------- */
+function App() {
+  const [crops, setCrops] = useState(null);
+  const [crop, setCrop] = useState("Onion");
+  const [markets, setMarkets] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [farm, setFarm] = useState({ lat: 20.0, lon: 73.8 });
+  const [tc, setTc] = useState(0.55);
+  const [ra, setRa] = useState(18);
+  const [ranking, setRanking] = useState([]);
+  const [hist, setHist] = useState([]);
+  const [fc, setFc] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("crops").then((c) => { setCrops(c); if (c.length && !c.includes("Onion")) setCrop(c[0]); }).catch((e) => setError(e.message));
+  }, []);
+
+  useEffect(() => {
+    if (!crops || !crops.length) return;
+    setError("");
+    api("markets", { crop }).then((m) => { setMarkets(m); setSelected((s) => (m.some((x) => x.market_id === s) ? s : m[0]?.market_id)); })
+      .catch((e) => setError(e.message));
+  }, [crop, crops]);
+
+  useEffect(() => {
+    if (!crops || !crops.length) return;
+    const t = setTimeout(() => {
+      api("best-market", { crop, lat: farm.lat, lon: farm.lon, transport: tc, risk: ra }).then(setRanking).catch((e) => setError(e.message));
+    }, 150);
+    return () => clearTimeout(t);
+  }, [crop, farm, tc, ra, crops]);
+
+  useEffect(() => {
+    if (!selected) return;
+    api("history", { crop, market_id: selected, days: 150 }).then(setHist).catch((e) => setError(e.message));
+    api("forecast", { crop, market_id: selected }).then(setFc).catch(() => setFc(null));
+  }, [crop, selected]);
+
+  const sel = markets.find((m) => m.market_id === selected);
+  const top = ranking[0];
+
+  if (crops && !crops.length) return html`
+    <div className="max-w-xl mx-auto p-8">
+      <h1 className="font-display text-3xl font-bold">No price data yet</h1>
+      <p className="mt-3">Close this window and run <b>START.bat</b> again, or load data with <code>python -m etl.pipeline --synthetic</code> from the backend folder.</p>
+    </div>`;
+
+  return html`
+  <div className="max-w-[1200px] mx-auto p-4 lg:p-6">
+    <header className="flex flex-wrap items-end justify-between gap-3 mb-4">
+      <div>
+        <h1 className="font-display text-3xl lg:text-4xl font-bold">Krishi-Mandi</h1>
+        <p className="text-ink/70">Where to sell, and when, over the next 15 days.</p>
+      </div>
+      <div className="flex gap-2" role="group" aria-label="Crop">
+        ${(crops || []).map((c) => html`
+          <button key=${c} onClick=${() => setCrop(c)} aria-pressed=${c === crop}
+            className=${"px-4 py-2 rounded-full border border-ink/20 font-semibold " + (c === crop ? "bg-ink text-white" : "bg-white")}>${c}</button>`)}
+      </div>
+    </header>
+
+    ${error && html`<p className="mb-4 rounded-lg bg-chili/10 text-chili p-3" role="alert">${error}</p>`}
+
+    <div className="grid gap-4 lg:grid-cols-[1fr_1.05fr]">
+      <div className="grid gap-4 content-start">
+        <${Card}>
+          <h2 className="font-display text-xl font-bold">Price map</h2>
+          <p className="text-sm text-ink/70 mb-2">Tap a mandi to inspect it. Tap empty map to move your farm (gold dot).</p>
+          <${MapView} markets=${markets} selected=${selected} onSelect=${setSelected} farm=${farm} onFarm=${(lat, lon) => setFarm({ lat, lon })} />
+          <div className="flex items-center gap-2 text-sm text-ink/70 mt-2">
+            <span>Lower price</span>
+            <i className="flex-1 h-2 rounded" style=${{ background: "linear-gradient(90deg,hsl(0,62%,45%),hsl(65,62%,45%),hsl(130,62%,40%))" }}></i>
+            <span>Higher price</span>
+          </div>
+        <//>
+        <${Card}>
+          <h2 className="font-display text-xl font-bold">Best places to sell from your farm</h2>
+          <div className="grid gap-2 mt-3 text-sm text-ink/70">
+            <label className="flex justify-between"><span>Transport cost</span><span>Rs ${tc.toFixed(2)} per quintal per km</span></label>
+            <input type="range" min="0.2" max="1.2" step="0.05" value=${tc} onInput=${(e) => setTc(+e.target.value)} aria-label="Transport cost" />
+            <label className="flex justify-between"><span>Risk aversion</span><span>${ra} per volatility point</span></label>
+            <input type="range" min="0" max="40" step="1" value=${ra} onInput=${(e) => setRa(+e.target.value)} aria-label="Risk aversion" />
+          </div>
+          <p className="text-sm text-ink/70 my-3">Net price = forecast price minus transport minus a penalty for price swings.</p>
+          <ol className="divide-y divide-ink/10">
+            ${ranking.slice(0, 6).map((r, i) => html`
+              <li key=${r.market_id}>
+                <button onClick=${() => setSelected(r.market_id)} className="w-full text-left py-2 px-1 flex items-center justify-between gap-3 hover:bg-paper rounded">
+                  <span><b>${r.market}</b>, ${r.state}<br /><span className="text-sm text-ink/70">${r.distance_km} km · sell around ${day(r.best_date)}</span></span>
+                  <span className=${"font-display text-lg font-bold whitespace-nowrap " + (i === 0 ? "text-leaf" : "")}>${rs(r.net_price)}</span>
+                </button>
+              </li>`)}
+          </ol>
+        <//>
+      </div>
+
+      <div className="grid gap-4 content-start">
+        ${sel && html`
+        <${Card}>
+          <h2 className="font-display text-xl font-bold">${crop} at ${sel.market}</h2>
+          ${top && html`<p className="border-l-4 border-leaf pl-3 my-3">
+            <b className="font-display">Best for your farm: ${top.market}</b>, around ${day(top.best_date)}, about ${rs(top.net_price)} per quintal after costs.</p>`}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <${Tile} label="Today" value=${rs(sel.price)} />
+            <${Tile} label="Last 7 days" value=${sgn(sel.change_7d)} tone=${sel.change_7d >= 0 ? "text-leaf" : "text-chili"} />
+            <${Tile} label="Volatility" value=${sel.volatility} />
+            <${Tile} label="vs last year" value=${sel.yoy == null ? "n/a" : sgn(sel.yoy)} tone=${sel.yoy >= 0 ? "text-leaf" : "text-chili"} />
+          </div>
+        <//>`}
+        <${Card}>
+          <h2 className="font-display text-xl font-bold">Price history and 15-day forecast</h2>
+          <p className="text-sm text-ink/70 mb-1">${fc ? `Model: ${fc.model.toUpperCase()}. Average error on the last 15 days: ${fc.mape}%.` : "No forecast available for this market."}</p>
+          <${PriceChart} hist=${hist} fc=${fc} />
+        <//>
+      </div>
+    </div>
+  </div>`;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>

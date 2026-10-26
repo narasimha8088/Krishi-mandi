@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "1. Check system",
+      "type": "shell",
+      "command": "python3 tools/check_system.py",
+      "windows": { "command": ".\\CHECK_SYSTEM.bat" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "2. Start Krishi-Mandi (open http://localhost:8000)",
+      "type": "shell",
+      "command": "bash START.sh",
+      "windows": { "command": ".\\START.bat" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "3. Run tests",
+      "type": "shell",
+      "command": "cd backend && .venv/bin/python -m pytest -q",
+      "windows": { "command": ".\\RUN_TESTS.bat" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Reset data",
+      "type": "shell",
+      "command": "rm -f backend/data/krishimandi.db",
+      "windows": { "command": ".\\RESET_DATA.bat" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}

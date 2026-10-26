@@ -1,0 +1,59 @@
+OPEN AND RUN KRISHI-MANDI IN VS CODE (Windows)
+==============================================
+
+VS Code cannot open a .zip file. Extract it first, then open the extracted FOLDER.
+
+STEP 1. Install the tools (skip any you already have)
+  - VS Code:  https://code.visualstudio.com/
+  - Python 3.12 (64-bit): https://www.python.org/downloads/
+        On the first installer screen tick "Add python.exe to PATH".
+
+STEP 2. Extract the project
+  - Delete any older Krishi-Mandi folders first.
+  - Right-click Krishi-Mandi-VSCode.zip  ->  Extract All  ->  Extract.
+  - Open the extracted folder. You must see START.bat, README.md and the folders
+    backend, web and tools directly inside it. (The .vscode folder is hidden by default; that is normal.)
+
+STEP 3. Open it in VS Code
+  - Start VS Code.  File  ->  Open Folder...
+  - Select the extracted folder that contains START.bat, then click "Select Folder".
+  - If VS Code asks "Do you trust the authors of the files in this folder?", click
+    "Yes, I trust the authors".
+  - A pop-up in the bottom-right suggests extensions. Click "Install" to add the Python extension.
+    (Or press Ctrl+Shift+X, search "Python" by Microsoft, click Install.)
+  - Alternative: right-click the extracted folder in File Explorer -> "Open with Code".
+
+STEP 4. Open the terminal inside VS Code
+  - Menu  Terminal  ->  New Terminal   (shortcut: Ctrl + `)
+  - The prompt should look like:  C:\Users\you\...\Krishi-Mandi>     (Command Prompt)
+  - If it looks like:  PS C:\...>  you are in PowerShell. Either type  cmd  and press Enter,
+    or put  .\  in front of every command (for example  .\START.bat).
+    (Plain START.bat does NOT work in PowerShell; .\START.bat does.)
+
+STEP 5. Check, then run
+  - Type:  CHECK_SYSTEM.bat      and read the result at the bottom.
+  - Type:  START.bat
+    The first run installs packages and trains forecasts (a few minutes).
+    When you see  [4/4] Starting Krishi-Mandi at http://localhost:8000
+    your browser opens the dashboard. You can also Ctrl+Click the link in the terminal.
+  - Alternative without typing: press Ctrl+Shift+B (runs the start task), or press
+    Ctrl+Shift+P, type "Tasks: Run Task", and choose a task.
+
+STEP 6. Tell VS Code which Python to use (after the first successful START.bat)
+  - Ctrl+Shift+P  ->  "Python: Select Interpreter"  ->  choose the one that ends with
+    backend\.venv\Scripts\python.exe
+  - This removes the yellow "import could not be resolved" warnings.
+
+STEP 7. Everyday use
+  - Stop the server:     click the terminal, press Ctrl+C
+  - Start again:         START.bat
+  - Edit the web page:   open web\index.html, save, then refresh the browser (F5). No restart needed.
+  - Edit Python code:    open backend\ml\forecast.py (or other files), save, press Ctrl+C in the
+                         terminal, then run START.bat again.
+  - Debug the API:       press F5 (choose "Run API with debugger"). Stop START.bat first so port 8000
+                         is free. Run START.bat once beforehand so the data exists.
+  - Run tests:           RUN_TESTS.bat   or the beaker icon (Testing) on the left sidebar.
+
+IF THE PACKAGE DOWNLOAD FAILS (SSL / pypi.org errors)
+  Use your phone hotspot, switch off VPN, pause antivirus web scanning, then run START.bat again.
+  Full list of fixes: SETUP_GUIDE.txt

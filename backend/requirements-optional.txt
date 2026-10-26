@@ -1,0 +1,3 @@
+# Only needed for PostgreSQL and the Prophet model. The app works without them.
+psycopg2-binary>=2.9
+prophet>=1.1.5

@@ -1,0 +1,16 @@
+backend/.venv/
+backend/data/
+backend/wheels/
+__pycache__/
+.pytest_cache/
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+*.db
+*.sqlite
+*.sqlite3
+*.py[cod]
+.pytest_cache/
+.mypy_cache/

@@ -1,0 +1,119 @@
+KRISHI-MANDI - SETUP AND RUN GUIDE (Windows 10 / 11)
+=====================================================
+(Using VS Code? Read OPEN_IN_VSCODE.txt first, then come back here for troubleshooting.)
+
+WHAT YOU NEED (nothing else)
+  - Python 3.10 or newer, 64-bit. Python 3.12 is the safest choice.
+    Python 3.13 and 3.14 also work: Windows installers exist for every package used.
+  - Internet connection (needed for installing packages once, and every time for the
+    map tiles and the page libraries).
+  - A modern browser (Chrome, Edge, Firefox).
+  You do NOT need: Docker, PostgreSQL, Node.js, Git, Visual Studio, or any certificate file
+  on a normal home connection.
+
+-----------------------------------------------------
+PART 1. INSTALL PYTHON (skip if "python --version" already shows 3.10 or higher)
+-----------------------------------------------------
+ 1. Go to https://www.python.org/downloads/ and download the Windows installer (64-bit).
+ 2. Run it. On the FIRST screen tick "Add python.exe to PATH". Then click "Install Now".
+ 3. Close every CMD window, then open a new one and check:
+        python --version
+
+-----------------------------------------------------
+PART 2. EXTRACT THE PROJECT CLEANLY
+-----------------------------------------------------
+ 1. Delete any OLD Krishi-Mandi folders from earlier attempts.
+ 2. Right-click the zip, choose "Extract All", click Extract.
+    Do NOT run files from inside the zip window.
+ 3. Open the extracted folder. You should see START.bat, CHECK_SYSTEM.bat, README.md,
+    and the folders backend, web, tools directly inside it.
+
+-----------------------------------------------------
+PART 3. CHECK YOUR COMPUTER (recommended before the first run)
+-----------------------------------------------------
+ 1. In the folder's address bar (File Explorer), type  cmd  and press Enter.
+    A CMD window opens inside the folder.
+ 2. Type:   CHECK_SYSTEM.bat
+ 3. Read the result at the bottom.
+    - "everything looks good"  ->  go to Part 4.
+    - "certificate problem"    ->  see "If the download keeps failing" below.
+    - "cannot reach"           ->  your network blocks something. Try a phone hotspot.
+
+-----------------------------------------------------
+PART 4. RUN THE PROJECT
+-----------------------------------------------------
+ In the same CMD window type:   START.bat
+
+   [1/4] Creating virtual environment        (a few seconds)
+   [2/4] Installing packages                 (2 to 6 minutes, first run only)
+   [3/4] Loading demo data + training models (about 1 minute, first run only)
+   [4/4] Starting Krishi-Mandi at http://localhost:8000
+
+ Your browser opens the dashboard. KEEP THE CMD WINDOW OPEN while using it.
+ To stop: click the CMD window and press Ctrl+C.
+ Next time: START.bat again. It starts in seconds.
+ If the page is blank, wait 5 seconds and press F5.
+
+-----------------------------------------------------
+PART 5. HOW TO KNOW IT WORKS
+-----------------------------------------------------
+ - A map of India with coloured circles and the title "Krishi-Mandi".
+ - Onion / Tomato / Rice buttons change the colours and the chart.
+ - Clicking a circle shows that mandi's price chart with a red 15-day forecast.
+ - Clicking an empty place on the map moves the gold dot (your farm) and re-ranks the markets.
+ - http://localhost:8000/docs shows the API.
+ - RUN_TESTS.bat should end with "3 passed".
+
+-----------------------------------------------------
+IF THE DOWNLOAD KEEPS FAILING
+-----------------------------------------------------
+ "SSL: UNEXPECTED_EOF_WHILE_READING" or "Could not fetch URL https://pypi.org" means something
+ on your computer or network is breaking secure connections to the Python package server.
+ START.bat already tries three methods automatically. If all fail:
+
+ A. Use your phone's Wi-Fi hotspot instead of the current network (fixes most cases).
+ B. Switch off any VPN.
+ C. Pause your antivirus "web shield", "HTTPS scanning" or "SSL scanning" for 10 minutes
+    (Kaspersky, Avast, AVG, Bitdefender, ESET, Quick Heal, Norton). Turn it back on afterwards.
+ D. Check the date and time on the laptop are correct.
+ E. Run Windows Update, then restart.
+ F. Company or college laptop: ask IT for the "root certificate" file (.pem or .crt), then run:
+        pip config set global.cert "C:\path\to\that-file.pem"
+    and run START.bat again. Or ask whether pypi.org and files.pythonhosted.org are allowed.
+ G. If you use a proxy, set it first in CMD, for example:
+        set HTTPS_PROXY=http://proxy-address:port
+        START.bat
+ H. Check for an old pip settings file pointing somewhere wrong:   pip config list
+
+ OFFLINE INSTALL (when only ANOTHER network or computer can download):
+ 1. On a connected network or computer with the SAME Python version and 64-bit Windows, in the
+    backend folder run:   python -m pip download -r requirements.txt -d wheels
+ 2. Copy the whole "wheels" folder into Krishi-Mandi\backend on your laptop.
+ 3. Run START.bat. It installs from "wheels" without needing the internet.
+
+-----------------------------------------------------
+OTHER PROBLEMS
+-----------------------------------------------------
+ "python is not recognized"
+     Reinstall Python and tick "Add python.exe to PATH". Open a NEW CMD window.
+ "DLL load failed"
+     Install the Microsoft Visual C++ Redistributable (x64):
+     https://aka.ms/vs/17/release/vc_redist.x64.exe
+     Then delete the folder backend\.venv and run START.bat again.
+ "The system cannot find the file START.bat"
+     CMD is in the wrong folder. Use the File Explorer address bar trick in Part 3.
+ Port already in use
+     START.bat picks the next free port (8001, 8002 ...) and shows it in the "[4/4]" line.
+ Blank page or grey map
+     The page loads its libraries and map tiles from the internet. Be online, and check that
+     CHECK_SYSTEM.bat shows OK for those sites.
+ Something is stuck after a failed run
+     Delete the folders backend\.venv and backend\data, then run START.bat again.
+
+-----------------------------------------------------
+USING REAL GOVERNMENT DATA (optional)
+-----------------------------------------------------
+ 1. Register for a free API key at https://data.gov.in (My Account -> API key).
+ 2. Run:  LOAD_REAL_DATA.bat YOUR_KEY
+ 3. Run START.bat.
+ Only mandis listed in backend\etl\mandi_geo.py appear on the map. Add rows there for more.
