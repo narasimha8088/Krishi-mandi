@@ -59,3 +59,30 @@ Other scripts: `RUN_TESTS.bat`, `LOAD_REAL_DATA.bat YOUR_KEY`, `RESET_DATA.bat`.
 - Demo prices are simulated. Backtest errors on them are not a claim about real-world accuracy.
 - The page loads React, Tailwind, Leaflet, Plotly and map tiles from the internet.
 - Optional: `pip install -r backend/requirements-optional.txt` for Prophet or PostgreSQL (`DATABASE_URL`).
+
+
+
+---
+
+## Project Screenshots
+
+### 1. Best Places to Sell
+![Best Places to Sell](screenshots/Best%20places%20to%20sell%20from%20your%20farm.png)
+
+### 2. Onion Price Dashboard
+![Onion Dashboard](screenshots/Complete%20dashboard%20%E2%80%94%20Onion%20at%20Ahmedabad.png)
+
+### 3. Rice Price Dashboard
+![Rice Dashboard](screenshots/Complete%20dashboard%20%E2%80%94%20Rice%20at%20Ahmedabad.png)
+
+### 4. Tomato Price Dashboard
+![Tomato Dashboard](screenshots/Complete%20dashboard%20%E2%80%94%20Tomato%20at%20Ahmedabad.png)
+
+### 5. Price Map
+![Krishi-Mandi Price Map](screenshots/Krishi-Mandi%20price%20map.png)
+
+### 6. Price History and 15-Day Forecast
+![Price Forecast](screenshots/Price%20history%20and%2015-day%20forecast%20graph.png)
+
+### 7. Tomato Analytics at Hubli
+![Tomato Analytics at Hubli](screenshots/Tomato%20analytics%20at%20Hubli.png)
